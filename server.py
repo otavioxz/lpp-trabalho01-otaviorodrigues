@@ -56,3 +56,24 @@ async def connect(sid, environ, auth):
 @sio.event
 async def disconnect(sid):
     jogadores.pop(sid, None)
+
+
+async def recusar(sid, motivo, causa):
+    """EMITE operacao.recusada só para quem pediu (to=sid): a recusa não muda
+    o estado, então os outros jogadores não precisam saber dela."""
+    await sio.emit("operacao.recusada", {"motivo": motivo, "causa": causa}, to=sid)
+
+
+# ESCUTA o pedido do Mestre para abrir a temporada. O servidor decide se aceita.
+@sio.on("vila.abertura_solicitada")
+async def abrir_vila(sid, dados=None):
+    pedido = "vila.abertura_solicitada"
+    if jogadores[sid]["papel"] != "mestre":
+        await recusar(sid, "Só o Mestre pode abrir a temporada", pedido)
+        return
+    if estado["fase"] != "aguardando":
+        await recusar(sid, "A temporada já foi aberta", pedido)
+        return
+    estado["fase"] = "aberta"
+    # EMITE vila.iniciada para todos: a fase mudou e todas as telas precisam mostrar isso.
+    await sio.emit("vila.iniciada", fato(pedido))
