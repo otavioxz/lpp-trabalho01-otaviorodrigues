@@ -120,6 +120,9 @@ Eu defini as regras e os números do pomar, revisei cada etapa, testei com duas 
 todos os commits. *(Revise e complete esta seção com o que você mudou por conta própria.)*
 
 ## Extras
+- **Contadores por evento:** no alto do Painel de eventos,
+  uma etiqueta por evento mostra quantas vezes este cliente já o emitiu ou escutou
+  (ex.: `construcao.iniciada ×2`).
 - **Arte própria do pomar:** o tacho de geleia (quadro 2 de `sprites-vila.png`) e a árvore com maçãs
   (peça 48 de `tileset-vila.png`) foram desenhados para este trabalho a partir da arte original do kit
   (uso livre na disciplina). Nenhuma arte de terceiros foi usada.
