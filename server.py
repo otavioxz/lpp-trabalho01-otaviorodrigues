@@ -77,3 +77,16 @@ async def abrir_vila(sid, dados=None):
     estado["fase"] = "aberta"
     # EMITE vila.iniciada para todos: a fase mudou e todas as telas precisam mostrar isso.
     await sio.emit("vila.iniciada", fato(pedido))
+
+
+# ESCUTA o pedido de um Jogador para construir um tacho de geleia.
+@sio.on("construcao.solicitada")
+async def construir(sid, dados=None):
+    pedido = "construcao.solicitada"
+    estado["frutas"] -= CUSTO
+    estado["colhedores"] += 1
+    estado["em_obra"] += 1
+    nome = jogadores[sid]["nome"]
+    # EMITE construcao.iniciada para todos: as frutas e os colhedores mudaram
+    # e todas as telas precisam mostrar o novo tacho em obra.
+    await sio.emit("construcao.iniciada", fato(pedido, por=nome))

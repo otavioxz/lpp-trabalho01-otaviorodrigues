@@ -322,7 +322,13 @@
           avisar("A temporada de colheita começou!", "ok");
           jogo.vilaIniciada();
         });
-        // ETAPA 3: ouvir "construcao.iniciada"   -> jogo.obraIniciada(...)
+        // ESCUTA construcao.iniciada: o servidor aceitou a obra de algum jogador
+        // e avisa todos, para que cada tela mostre o novo tacho em obra.
+        ouvir("construcao.iniciada", "mostra o canteiro do tacho", (d) => {
+          atualizar(d);
+          avisar(d.por + " começou a construir um tacho");
+          jogo.obraIniciada(d.estado);
+        });
         // ETAPA 4: ouvir "operacao.recusada"     -> jogo.recusado(...)
         // ETAPA 5: ouvir "recurso.produzido"     -> jogo.recursoProduzido(...)
         //          e "construcao.concluida"      -> jogo.obraConcluida(...)
@@ -337,7 +343,9 @@
         pedir("vila.abertura_solicitada");
       }
       function construir() {
-        // ETAPA 3: pedir "construcao.solicitada"
+        // EMITE o pedido de construção: o cliente não desconta frutas nem ocupa
+        // colhedor; quem decide e altera o estado é o servidor.
+        pedir("construcao.solicitada");
       }
       function encerrarVila() {
         // ETAPA 6: pedir "vila.encerramento_solicitado"
