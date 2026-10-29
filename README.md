@@ -1,7 +1,7 @@
-# Vila em Tempo Real — (tipo de vila)
+# Vila em Tempo Real — Pomar e geleias
 
 ## Integrantes
-- Nome — @usuario-github
+- Otavio Rodrigues — @otavioxz
 
 ## Como instalar e executar
 (Passo a passo: Python, `pip install -r requirements.txt`, `uvicorn server:app --reload`, endereço no navegador.)
