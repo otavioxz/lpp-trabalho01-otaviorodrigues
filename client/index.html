@@ -51,17 +51,18 @@
 
   <!-- Tela da vila -->
   <main v-else>
-    <h1>🏘️ Vila</h1>
+    <h1>🍎 Pomar e geleias</h1>
     <p>{{ papel }}: <strong>{{ nome || "Anônimo" }}</strong> · Temporada: <strong>{{ estado.fase }}</strong></p>
 
     <!-- A vila desenhada pelo Phaser aparece aqui -->
     <div id="jogo"></div>
 
     <section class="painel">
-      <p>🪵 Toras: <strong>{{ estado.toras }}</strong> (+{{ porMinuto }}/min)</p>
-      <p>👷 Trabalhadores: {{ estado.trabalhadores }}/{{ estado.limite }}
-        <progress :value="estado.trabalhadores" :max="estado.limite"></progress></p>
-      <p>🏠 Construções: {{ estado.concluidas }} concluídas, {{ estado.em_obra }} em obra</p>
+      <p>🍎 Frutas: <strong>{{ estado.frutas }}</strong> (+{{ porMinuto }}/min)</p>
+      <p>🫙 Potes de geleia: <strong>{{ estado.potes }}</strong></p>
+      <p>🧺 Colhedores: {{ estado.colhedores }}/{{ estado.limite }}
+        <progress :value="estado.colhedores" :max="estado.limite"></progress></p>
+      <p>🍯 Tachos: {{ estado.concluidas }} prontos, {{ estado.em_obra }} em obra</p>
     </section>
 
     <section>
@@ -69,7 +70,7 @@
         <button @click="abrirVila">Abrir temporada</button>
         <button @click="encerrarVila">Encerrar temporada</button>
       </template>
-      <button v-else @click="construir">🔨 Construir (custo {{ estado.custo }} toras)</button>
+      <button v-else @click="construir">🍯 Construir tacho (custo {{ estado.custo }} frutas)</button>
     </section>
 
     <ul class="avisos">
@@ -248,7 +249,7 @@
       const papel = ref("");
       const conectado = ref(false);
       const estado = reactive({
-        fase: "aguardando", toras: 0, trabalhadores: 0, limite: 0,
+        fase: "aguardando", frutas: 0, potes: 0, colhedores: 0, limite: 0,
         producao: 0, intervalo: 0, tempo_obra: 0, custo: 0, concluidas: 0, em_obra: 0,
       });
       const avisos = ref([]);
@@ -277,7 +278,7 @@
         if (!d) return "";
         const { estado: e, causa, ...resto } = d;
         const partes = Object.entries(resto).map(([k, v]) => k + ": " + v);
-        if (e) partes.push("toras " + e.toras + ", trabalhadores " + e.trabalhadores + "/" + e.limite);
+        if (e) partes.push("frutas " + e.frutas + ", potes " + e.potes + ", colhedores " + e.colhedores + "/" + e.limite);
         return partes.join(" · ");
       }
       function registrar(sentido, nome, dados, reacao = "") {
@@ -308,7 +309,12 @@
 
         // ===== ESCUTAS (on): o cliente reage aos FATOS do servidor =====
         // ouvir(evento, "o que o cliente faz ao receber", função)
-        // ETAPA 1: ouvir "estado.sincronizado"   -> jogo.mostrarEstado(...)
+        // ESCUTA estado.sincronizado: o servidor manda o estado só para quem
+        // acabou de entrar, para a tela começar igual à dos outros jogadores.
+        ouvir("estado.sincronizado", "guarda o estado e desenha o pomar", (d) => {
+          atualizar(d);
+          jogo.mostrarEstado(d.estado);
+        });
         // ETAPA 2: ouvir "vila.iniciada"         -> jogo.vilaIniciada()
         // ETAPA 3: ouvir "construcao.iniciada"   -> jogo.obraIniciada(...)
         // ETAPA 4: ouvir "operacao.recusada"     -> jogo.recusado(...)
