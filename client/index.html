@@ -329,7 +329,12 @@
           avisar(d.por + " começou a construir um tacho");
           jogo.obraIniciada(d.estado);
         });
-        // ETAPA 4: ouvir "operacao.recusada"     -> jogo.recusado(...)
+        // ESCUTA operacao.recusada: só quem fez o pedido recebe, porque a recusa
+        // não muda o estado do pomar e os outros jogadores não precisam saber.
+        ouvir("operacao.recusada", "avisa o motivo e a tela treme", (d) => {
+          avisar(d.motivo, "erro");
+          jogo.recusado(d.motivo);
+        });
         // ETAPA 5: ouvir "recurso.produzido"     -> jogo.recursoProduzido(...)
         //          e "construcao.concluida"      -> jogo.obraConcluida(...)
         // ETAPA 6: ouvir "vila.encerrada"        -> jogo.vilaEncerrada()

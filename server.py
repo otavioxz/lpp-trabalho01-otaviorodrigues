@@ -83,6 +83,22 @@ async def abrir_vila(sid, dados=None):
 @sio.on("construcao.solicitada")
 async def construir(sid, dados=None):
     pedido = "construcao.solicitada"
+    # Valide TUDO antes de alterar o estado e sem await no meio: o servidor
+    # trata um evento por vez, então dois pedidos simultâneos são decididos
+    # em sequência e só um fica com o último colhedor.
+    if estado["fase"] != "aberta":
+        motivo = "A temporada não está aberta"
+    elif jogadores[sid]["papel"] != "jogador":
+        motivo = "Só os Jogadores podem construir tachos"
+    elif estado["frutas"] < CUSTO:
+        motivo = "Frutas insuficientes"
+    elif estado["colhedores"] >= estado["limite"]:
+        motivo = "Sem colhedor livre"
+    else:
+        motivo = None
+    if motivo:
+        await recusar(sid, motivo, pedido)
+        return
     estado["frutas"] -= CUSTO
     estado["colhedores"] += 1
     estado["em_obra"] += 1
