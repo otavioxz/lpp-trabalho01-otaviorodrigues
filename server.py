@@ -16,6 +16,9 @@ TEMPO_OBRA = 8        # segundos até o tacho ficar pronto
 INTERVALO = 5         # segundos entre as colheitas automáticas
 GANHO_POR_TACHO = 5   # frutas a mais por colheita para cada tacho pronto
 FRUTAS_POR_POTE = 5   # frutas que cada tacho pronto transforma em 1 pote por colheita
+AMADURECER = 20       # segundos entre um lote maduro e o próximo
+LOTE = 30             # frutas de um lote maduro
+PRAZO = 10            # segundos para colher o lote antes que ele estrague
 
 # Estado do pomar: só o servidor altera. Os clientes recebem cópias pelos eventos.
 estado = {
@@ -30,9 +33,12 @@ estado = {
     "custo": CUSTO,
     "concluidas": 0,           # tachos prontos
     "em_obra": 0,              # tachos em obra
+    "lote_maduro": 0,          # frutas do lote maduro à espera de colheita (0 = nenhum)
+    "prazo": PRAZO,
 }
 
 jogadores = {}  # sid -> {"nome": ..., "papel": ...}
+numero_lote = 0  # identifica cada lote, para o prazo de um lote antigo não estragar um novo
 
 
 def fato(causa, **extras):
@@ -78,6 +84,7 @@ async def abrir_vila(sid, dados=None):
         return
     estado["fase"] = "aberta"
     sio.start_background_task(producao)    # o relógio do pomar começa a emitir colheitas
+    sio.start_background_task(amadurecimento)  # e também a amadurecer lotes de frutas
     # EMITE vila.iniciada para todos: a fase mudou e todas as telas precisam mostrar isso.
     await sio.emit("vila.iniciada", fato(pedido))
 
@@ -151,8 +158,62 @@ async def encerrar_vila(sid, dados=None):
     if estado["fase"] != "aberta":
         await recusar(sid, "A temporada não está aberta", pedido)
         return
-    # Com a fase "encerrada", os temporizadores de colheita e de obra param
+    # Com a fase "encerrada", os temporizadores de colheita, obra e amadurecimento param
     # sozinhos e todo novo pedido de construção passa a ser recusado.
     estado["fase"] = "encerrada"
+    estado["lote_maduro"] = 0              # o lote pendente é descartado
     # EMITE vila.encerrada para todos: a temporada acabou para todas as telas.
     await sio.emit("vila.encerrada", fato(pedido))
+
+
+# TEMPORIZADOR do amadurecimento (evento próprio do pomar): a cada AMADURECER
+# segundos surge um lote maduro, que os Jogadores disputam antes que estrague.
+async def amadurecimento():
+    global numero_lote
+    while estado["fase"] == "aberta":
+        await sio.sleep(AMADURECER)
+        if estado["fase"] != "aberta":
+            break
+        if estado["lote_maduro"]:          # só existe um lote maduro por vez
+            continue
+        estado["lote_maduro"] = LOTE
+        numero_lote += 1
+        # EMITE fruta.amadureceu para todos: todos podem disputar o lote.
+        await sio.emit("fruta.amadureceu", fato("temporizador", lote=LOTE, prazo=PRAZO))
+        sio.start_background_task(prazo_do_lote, numero_lote)
+
+
+# TEMPORIZADOR do prazo: se ninguém colher o lote a tempo, ele estraga.
+async def prazo_do_lote(numero):
+    await sio.sleep(PRAZO)
+    # o lote já foi colhido, descartado no encerramento ou trocado por outro
+    if estado["fase"] != "aberta" or not estado["lote_maduro"] or numero != numero_lote:
+        return
+    perdidas = estado["lote_maduro"]
+    estado["lote_maduro"] = 0
+    # EMITE fruta.estragou para todos: o lote sumiu sem somar frutas.
+    await sio.emit("fruta.estragou", fato("fruta.amadureceu (temporizador)", perdidas=perdidas))
+
+
+# ESCUTA o pedido de um Jogador para colher o lote maduro.
+@sio.on("colheita.solicitada")
+async def colher(sid, dados=None):
+    pedido = "colheita.solicitada"
+    # Valide e altere sem await no meio: se dois jogadores pedirem ao mesmo
+    # tempo, o primeiro leva o lote e o segundo já encontra o lote vazio.
+    if estado["fase"] != "aberta":
+        motivo = "A temporada não está aberta"
+    elif jogadores[sid]["papel"] != "jogador":
+        motivo = "Só os Jogadores podem colher"
+    elif not estado["lote_maduro"]:
+        motivo = "Não há fruta madura para colher"
+    else:
+        motivo = None
+    if motivo:
+        await recusar(sid, motivo, pedido)
+        return
+    colhidas = estado["lote_maduro"]
+    estado["frutas"] += colhidas
+    estado["lote_maduro"] = 0
+    # EMITE colheita.realizada para todos: as frutas subiram e o lote acabou.
+    await sio.emit("colheita.realizada", fato(pedido, por=jogadores[sid]["nome"], colhidas=colhidas))
