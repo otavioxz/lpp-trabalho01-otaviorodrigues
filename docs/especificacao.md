@@ -23,6 +23,7 @@ O pomar é cooperativo. O **Mestre** abre e encerra a temporada de colheita. Os 
 - **Fruta madura estraga (evento próprio):**
   - a cada **20 segundos** de temporada aberta, amadurece um **lote de 30 frutas** com prazo de **10 segundos** para ser colhido;
   - só existe um lote maduro por vez;
+  - enquanto há um lote maduro, os Jogadores veem a opção de colher; quando o lote é colhido ou estraga, a opção some;
   - o primeiro jogador que pedir a colheita leva o lote, que soma 30 ao estoque, e os outros recebem recusa;
   - se ninguém colher dentro do prazo, o lote **estraga** e se perde.
 - **Recusas:** um pedido é recusado, e **só quem pediu** é avisado, quando:
@@ -31,7 +32,9 @@ O pomar é cooperativo. O **Mestre** abre e encerra a temporada de colheita. Os 
   - não há colhedor livre;
   - não há lote maduro para colher;
   - um Jogador tenta abrir ou encerrar a temporada (só o Mestre pode);
-  - o Mestre tenta abrir uma temporada que já foi aberta.
+  - o Mestre tenta construir um tacho ou colher um lote (só os Jogadores podem);
+  - o Mestre tenta abrir uma temporada que já foi aberta;
+  - o Mestre tenta encerrar uma temporada que não está aberta.
 - **Encerramento:**
   - a colheita automática e o amadurecimento param;
   - obras em andamento não terminam mais;
