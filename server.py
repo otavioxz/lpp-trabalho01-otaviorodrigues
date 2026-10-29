@@ -139,3 +139,20 @@ async def obra(nome):
     estado["producao"] += GANHO_POR_TACHO
     # EMITE construcao.concluida para todos: o colhedor ficou livre e a colheita aumentou.
     await sio.emit("construcao.concluida", fato("construcao.iniciada (temporizador)", por=nome))
+
+
+# ESCUTA o pedido do Mestre para encerrar a temporada.
+@sio.on("vila.encerramento_solicitado")
+async def encerrar_vila(sid, dados=None):
+    pedido = "vila.encerramento_solicitado"
+    if jogadores[sid]["papel"] != "mestre":
+        await recusar(sid, "Só o Mestre pode encerrar a temporada", pedido)
+        return
+    if estado["fase"] != "aberta":
+        await recusar(sid, "A temporada não está aberta", pedido)
+        return
+    # Com a fase "encerrada", os temporizadores de colheita e de obra param
+    # sozinhos e todo novo pedido de construção passa a ser recusado.
+    estado["fase"] = "encerrada"
+    # EMITE vila.encerrada para todos: a temporada acabou para todas as telas.
+    await sio.emit("vila.encerrada", fato(pedido))

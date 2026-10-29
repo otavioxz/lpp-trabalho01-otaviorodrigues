@@ -348,7 +348,13 @@
           avisar("Tacho de " + d.por + " pronto! A colheita aumentou e ele já faz geleia.", "ok");
           jogo.obraConcluida(d.estado);
         });
-        // ETAPA 6: ouvir "vila.encerrada"        -> jogo.vilaEncerrada()
+        // ESCUTA vila.encerrada: o servidor aceitou o encerramento pedido pelo
+        // Mestre e avisa todos, para que cada tela mostre o pomar fechado.
+        ouvir("vila.encerrada", "escurece o pomar e bloqueia novas ações", (d) => {
+          atualizar(d);
+          avisar("Temporada de colheita encerrada.");
+          jogo.vilaEncerrada();
+        });
       }
 
       // ===== PEDIDOS (emit): o cliente PEDE algo ao servidor =====
@@ -364,7 +370,9 @@
         pedir("construcao.solicitada");
       }
       function encerrarVila() {
-        // ETAPA 6: pedir "vila.encerramento_solicitado"
+        // EMITE o pedido de encerramento: o cliente não encerra a temporada
+        // sozinho; o servidor decide e responde com vila.encerrada ou recusa.
+        pedir("vila.encerramento_solicitado");
       }
 
       return { nome, papel, conectado, estado, avisos, eventosVisiveis, contadores, ocultarProducao, porMinuto,
