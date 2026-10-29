@@ -6,8 +6,6 @@ app = socketio.ASGIApp(sio, static_files={
     "/assets": "client/assets",      # mapa, tileset e sprites da vila
 })
 
-# A partir da Etapa 1, adicione o seu código ABAIXO desta linha.
-
 # ---------------------------------------------------------------------
 #  Regras do pomar (docs/especificacao.md, seção 1)
 # ---------------------------------------------------------------------

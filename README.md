@@ -13,6 +13,7 @@ As regras, a tabela de eventos e os cenários de teste estão em [`docs/especifi
 ## Tecnologias
 - **Servidor:** Python 3 (testado no 3.13), `python-socketio` e `uvicorn`.
 - **Tela:** Vue 3, Socket.IO (cliente) e Phaser 3, carregados por CDN (nada para instalar).
+- **Fontes:** Nunito e JetBrains Mono, do Google Fonts (licença SIL Open Font License).
 
 ## Como instalar e executar
 1. Instale o [Python 3](https://www.python.org/downloads/) e clone o repositório:
@@ -49,7 +50,7 @@ As regras, a tabela de eventos e os cenários de teste estão em [`docs/especifi
    colhedores 1/3 e o canteiro na vila. Depois de 8 s o canteiro vira um tacho
    (`construcao.concluida`), a colheita sobe 5 frutas e, a cada colheita, o tacho faz 1 pote de geleia.
 6. **Fruta madura:** a cada 20 s aparece um lote de 30 frutas com uma barra de prazo de 10 s e o
-   botão **Colher lote maduro**. Se o Jogador colher, todos veem +30 frutas; se ninguém colher,
+   botão **Colher** (só para Jogadores). Se o Jogador colher, todos veem +30 frutas; se ninguém colher,
    todos veem "O lote maduro estragou".
 7. **Disputa (use uma terceira aba como Jogador B):** com 2 de 3 colhedores ocupados, clique em
    **Construir tacho** nos dois Jogadores quase ao mesmo tempo. Só um consegue; o outro vê
@@ -113,9 +114,13 @@ Usei o **Claude Code** (Anthropic) como assistente durante o desenvolvimento:
 - para implementar as etapas seguindo o Guia de Implementação, uma por vez, testando cada uma antes
   do commit;
 - para criar a arte nova (o tacho de geleia e a árvore com maçãs) a partir da arte do kit e para
-  adaptar o mapa no formato do Tiled;
+  adaptar o mapa no formato do Tiled.
+- revisei e testei cada etapa com várias abas, ajustei elementos e fiz todos os commits.
 
 ## Extras
+- **Interface com o tema do pomar:** tela de entrada com a escolha do papel, cartões com os números
+  do pomar, destaque do lote maduro com a barra de prazo, avisos com ícones e o Painel de eventos em
+  estilo de console, ao lado da vila no computador e embaixo dela no celular.
 - **Contadores por evento:** no alto do Painel de eventos,
   uma etiqueta por evento mostra quantas vezes este cliente já o emitiu ou escutou
   (ex.: `construcao.iniciada ×2`).
