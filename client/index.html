@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Vila em Tempo Real</title>
+  <title>Pomar e geleias — Vila em Tempo Real</title>
   <style>
     body { font-family: system-ui, sans-serif; max-width: 580px; margin: 24px auto; padding: 0 12px; }
     .cartao, .painel { border: 1px solid #ccc; border-radius: 8px; padding: 12px; margin: 12px 0; }
@@ -43,7 +43,7 @@
 
   <!-- Tela de entrada -->
   <section v-if="!conectado" class="cartao">
-    <h1>🏘️ Vila em Tempo Real</h1>
+    <h1>🍎 Pomar e geleias</h1>
     <input v-model="nome" placeholder="Seu nome">
     <button @click="entrar('mestre')">Entrar como Mestre</button>
     <button @click="entrar('jogador')">Entrar como Jogador</button>
@@ -112,10 +112,10 @@
 
 <script>
   // =====================================================================
-  //  A VILA DESENHADA (Phaser) - já vem pronta, você NÃO precisa alterar.
+  //  O POMAR DESENHADO (Phaser) - cena do kit adaptada ao Pomar e geleias.
   //  O cenário é um MAPA (Tilemap) feito no Tiled: client/assets/vila.json.
-  //  Cada método abaixo reage a UM evento do servidor.
-  //  Seu trabalho é chamar o método certo dentro de cada socket.on(...).
+  //  Cada método abaixo reage a UM evento do servidor e é chamado dentro
+  //  do ouvir(...) correspondente.
   // =====================================================================
   function criarJogo() {
     let cena = null;          // a cena, quando já estiver pronta
@@ -128,7 +128,7 @@
 
       preload() {
         this.load.image("tiles", "assets/tileset-vila.png");                 // peças do cenário
-        this.load.spritesheet("sprites", "assets/sprites-vila.png",          // casa e canteiro
+        this.load.spritesheet("sprites", "assets/sprites-vila.png",          // casa, canteiro e tacho
           { frameWidth: 32, frameHeight: 32 });
         this.load.tilemapTiledJSON("mapa", "assets/vila.json");              // o mapa
       }
@@ -140,11 +140,12 @@
         mapa.createLayer("chao", tileset);
         mapa.createLayer("decoracao", tileset);
 
-        // 2) pontos marcados no mapa: onde ficam as obras e o acampamento de lenha
+        // 2) pontos marcados no mapa: onde ficam as obras, o cesto da colheita e o lote maduro
         const pontos = mapa.getObjectLayer("pontos").objects;
         this.lotes = pontos.filter((p) => p.name.startsWith("lote"))
           .sort((a, b) => a.name.localeCompare(b.name, "pt", { numeric: true }));
-        this.acampamento = pontos.find((p) => p.name === "acampamento");
+        this.cesto = pontos.find((p) => p.name === "acampamento");        // de onde sobem as frutas colhidas
+        this.pontoMaduro = pontos.find((p) => p.name === "fruta_madura"); // onde aparece o lote maduro
 
         // 3) câmera: o mapa é pequeno (pixel art), então damos zoom 2x
         this.cameras.main.setZoom(2).centerOn(mapa.widthInPixels / 2, mapa.heightInPixels / 2);
@@ -153,6 +154,8 @@
 
         this.obras = [];      // obras em andamento (a primeira a começar é a primeira a terminar)
         this.usados = 0;      // quantos lotes já foram usados
+        this.tachos = [];     // posições dos tachos prontos (de onde sobem os potes)
+        this.maduro = null;   // desenho do lote maduro, enquanto ele existir
         this.faixa = this.add.text(this.larg / 2, 9, "⏳ Aguardando o Mestre", {
           fontSize: "8px", color: "#ffffff", backgroundColor: "#00000099",
           padding: { x: 5, y: 2 }, resolution: 2,
@@ -164,9 +167,15 @@
 
       // ----- apoio -----
       lote(i) { return this.lotes[i % this.lotes.length]; }
-      criarCasa(x, y) {
-        const casa = this.add.sprite(x, y, "sprites", 0);
-        this.tweens.add({ targets: casa, scale: { from: 0.3, to: 1 }, duration: 400, ease: "Back.Out" });
+      criarTacho(x, y) {
+        const tacho = this.add.sprite(x, y, "sprites", 2);     // quadro 2: tacho de geleia
+        this.tweens.add({ targets: tacho, scale: { from: 0.3, to: 1 }, duration: 400, ease: "Back.Out" });
+        this.tachos.push({ x, y });
+      }
+      tirarLoteMaduro() {
+        if (!this.maduro) return;
+        this.maduro.forEach((o) => o.destroy());
+        this.maduro = null;
       }
       criarObra(duracao) {
         const { x, y } = this.lote(this.usados++);
@@ -189,10 +198,11 @@
       mostrarEstado(estado) {                 // estado.sincronizado
         for (let i = 0; i < estado.concluidas; i++) {
           const p = this.lote(this.usados++);
-          this.criarCasa(p.x, p.y);
+          this.criarTacho(p.x, p.y);
         }
         for (let i = 0; i < estado.em_obra; i++) this.criarObra(estado.tempo_obra * 1000);
         if (estado.fase === "aberta") this.vilaIniciada();
+        if (estado.lote_maduro) this.frutaAmadureceu(estado.lote_maduro, estado.prazo);
         if (estado.fase === "encerrada") this.vilaEncerrada();
       }
       vilaIniciada() {                        // vila.iniciada
@@ -200,23 +210,49 @@
       }
       obraIniciada(estado) {                  // construcao.iniciada
         this.criarObra(estado.tempo_obra * 1000);
-        this.flutuar("-" + estado.custo + " 🪵", this.acampamento.x, this.acampamento.y, "#b00020");
+        this.flutuar("-" + estado.custo + " 🍎", this.cesto.x, this.cesto.y, "#b00020");
       }
       obraConcluida(estado) {                 // construcao.concluida
         const obra = this.obras.shift();
         if (!obra) return;
         obra.canteiro.destroy(); obra.fundo.destroy(); obra.barra.destroy();
-        this.criarCasa(obra.x, obra.y);
-        this.flutuar("🏠 Obra concluída!", obra.x, obra.y - 18, "#1b5e20");
+        this.criarTacho(obra.x, obra.y);
+        this.flutuar("🍯 Tacho pronto!", obra.x, obra.y - 18, "#1b5e20");
       }
-      recursoProduzido(estado) {              // recurso.produzido
-        this.flutuar("+" + estado.producao + " 🪵", this.acampamento.x, this.acampamento.y, "#1b5e20");
+      recursoProduzido(estado, potes) {       // recurso.produzido
+        this.flutuar("+" + estado.producao + " 🍎", this.cesto.x, this.cesto.y, "#1b5e20");
+        for (let i = 0; i < potes && i < this.tachos.length; i++) {   // cada tacho que fez geleia
+          const t = this.tachos[i];
+          this.flutuar("+1 🫙", t.x, t.y + 6, "#8e1c40");
+        }
+      }
+      frutaAmadureceu(lote, prazo) {          // fruta.amadureceu
+        this.tirarLoteMaduro();
+        const { x, y } = this.pontoMaduro;
+        const rotulo = this.add.text(x, y, "🧺 " + lote + " 🍎", {
+          fontSize: "8px", color: "#ffffff", backgroundColor: "#8e1c40cc",
+          padding: { x: 3, y: 1 }, resolution: 2,
+        }).setOrigin(0.5).setDepth(7);
+        this.tweens.add({ targets: rotulo, scale: 1.15, duration: 400, yoyo: true, repeat: -1 });
+        const fundo = this.add.rectangle(x - 16, y + 9, 32, 3, 0x333333).setOrigin(0, 0.5).setDepth(7);
+        const barra = this.add.rectangle(x - 16, y + 9, 32, 3, 0xe53935).setOrigin(0, 0.5).setDepth(7);
+        this.tweens.add({ targets: barra, scaleX: 0, duration: prazo * 1000 });   // o prazo escorrendo
+        this.maduro = [rotulo, fundo, barra];
+      }
+      colheitaRealizada(colhidas) {           // colheita.realizada
+        this.tirarLoteMaduro();
+        this.flutuar("+" + colhidas + " 🍎", this.pontoMaduro.x, this.pontoMaduro.y, "#1b5e20");
+      }
+      frutaEstragou(perdidas) {               // fruta.estragou
+        this.tirarLoteMaduro();
+        this.flutuar("🍂 -" + perdidas + " 🍎", this.pontoMaduro.x, this.pontoMaduro.y, "#6d4c41");
       }
       recusado(motivo) {                      // operacao.recusada (só quem pediu)
         this.cameras.main.shake(180, 0.006);
         this.flutuar("✋ " + motivo, this.larg / 2, this.alt - 28, "#b00020");
       }
       vilaEncerrada() {                       // vila.encerrada
+        this.tirarLoteMaduro();
         this.faixa.setText("🌙 Temporada encerrada");
         this.add.rectangle(this.larg / 2, this.alt / 2, this.larg, this.alt, 0x000033, 0.35).setDepth(5);
       }
@@ -237,6 +273,9 @@
       recursoProduzido: (...a) => chamar("recursoProduzido", ...a),
       recusado: (...a) => chamar("recusado", ...a),
       vilaEncerrada: (...a) => chamar("vilaEncerrada", ...a),
+      frutaAmadureceu: (...a) => chamar("frutaAmadureceu", ...a),
+      colheitaRealizada: (...a) => chamar("colheitaRealizada", ...a),
+      frutaEstragou: (...a) => chamar("frutaEstragou", ...a),
     };
   }
 </script>
@@ -343,7 +382,7 @@
         // (e os tachos fizeram geleia). O cliente não pergunta, só reage.
         ouvir("recurso.produzido", "atualiza frutas e potes e mostra o +N", (d) => {
           atualizar(d);
-          jogo.recursoProduzido(d.estado);
+          jogo.recursoProduzido(d.estado, d.potes_feitos);
         });
         // ESCUTA construcao.concluida: o temporizador da obra terminou, o colhedor
         // ficou livre e o tacho passa a fazer geleia em todas as telas.
@@ -363,18 +402,21 @@
         // todas as telas mostram o lote para os Jogadores disputarem.
         ouvir("fruta.amadureceu", "mostra o lote maduro e o botão de colher", (d) => {
           atualizar(d);
+          jogo.frutaAmadureceu(d.lote, d.prazo);
           avisar("🍒 Um lote de " + d.lote + " frutas amadureceu! Colha em até " + d.prazo + " s.");
         });
         // ESCUTA colheita.realizada: algum Jogador venceu a disputa pelo lote;
         // todas as telas somam as frutas e escondem o botão de colher.
         ouvir("colheita.realizada", "soma as frutas e esconde o lote", (d) => {
           atualizar(d);
+          jogo.colheitaRealizada(d.colhidas);
           avisar(d.por + " colheu o lote maduro (+" + d.colhidas + " frutas)!", "ok");
         });
         // ESCUTA fruta.estragou: o prazo acabou sem colheita; todas as telas
         // escondem o lote, que se perdeu sem somar frutas.
         ouvir("fruta.estragou", "esconde o lote e avisa a perda", (d) => {
           atualizar(d);
+          jogo.frutaEstragou(d.perdidas);
           avisar("O lote maduro estragou: " + d.perdidas + " frutas perdidas.", "erro");
         });
       }
