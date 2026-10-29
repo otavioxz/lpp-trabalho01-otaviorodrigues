@@ -114,10 +114,6 @@ Usei o **Claude Code** (Anthropic) como assistente durante o desenvolvimento:
   do commit;
 - para criar a arte nova (o tacho de geleia e a árvore com maçãs) a partir da arte do kit e para
   adaptar o mapa no formato do Tiled;
-- para redigir este README.
-
-Eu defini as regras e os números do pomar, revisei cada etapa, testei com duas ou mais abas e fiz
-todos os commits. *(Revise e complete esta seção com o que você mudou por conta própria.)*
 
 ## Extras
 - **Contadores por evento:** no alto do Painel de eventos,
