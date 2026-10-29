@@ -14,6 +14,8 @@ app = socketio.ASGIApp(sio, static_files={
 CUSTO = 40            # frutas por tacho de geleia
 TEMPO_OBRA = 8        # segundos até o tacho ficar pronto
 INTERVALO = 5         # segundos entre as colheitas automáticas
+GANHO_POR_TACHO = 5   # frutas a mais por colheita para cada tacho pronto
+FRUTAS_POR_POTE = 5   # frutas que cada tacho pronto transforma em 1 pote por colheita
 
 # Estado do pomar: só o servidor altera. Os clientes recebem cópias pelos eventos.
 estado = {
@@ -75,6 +77,7 @@ async def abrir_vila(sid, dados=None):
         await recusar(sid, "A temporada já foi aberta", pedido)
         return
     estado["fase"] = "aberta"
+    sio.start_background_task(producao)    # o relógio do pomar começa a emitir colheitas
     # EMITE vila.iniciada para todos: a fase mudou e todas as telas precisam mostrar isso.
     await sio.emit("vila.iniciada", fato(pedido))
 
@@ -106,3 +109,33 @@ async def construir(sid, dados=None):
     # EMITE construcao.iniciada para todos: as frutas e os colhedores mudaram
     # e todas as telas precisam mostrar o novo tacho em obra.
     await sio.emit("construcao.iniciada", fato(pedido, por=nome))
+    sio.start_background_task(obra, nome)  # o temporizador da obra emitirá construcao.concluida
+
+
+# TEMPORIZADOR da colheita: roda em segundo plano enquanto a temporada está
+# aberta. Ninguém clica: o próprio servidor gera o fato a cada INTERVALO.
+async def producao():
+    while estado["fase"] == "aberta":
+        await sio.sleep(INTERVALO)        # sio.sleep não trava o servidor (time.sleep travaria)
+        if estado["fase"] != "aberta":
+            break
+        estado["frutas"] += estado["producao"]
+        # cada tacho pronto transforma FRUTAS_POR_POTE frutas em 1 pote, se houver frutas
+        potes = min(estado["concluidas"], estado["frutas"] // FRUTAS_POR_POTE)
+        estado["frutas"] -= potes * FRUTAS_POR_POTE
+        estado["potes"] += potes
+        # EMITE recurso.produzido para todos: o estoque mudou sem ninguém pedir.
+        await sio.emit("recurso.produzido", fato("temporizador", colhidas=estado["producao"], potes_feitos=potes))
+
+
+# TEMPORIZADOR da obra: começa quando a construção é aceita e termina sozinho.
+async def obra(nome):
+    await sio.sleep(TEMPO_OBRA)
+    if estado["fase"] != "aberta":        # temporada encerrada: a obra não termina mais
+        return
+    estado["colhedores"] -= 1
+    estado["em_obra"] -= 1
+    estado["concluidas"] += 1
+    estado["producao"] += GANHO_POR_TACHO
+    # EMITE construcao.concluida para todos: o colhedor ficou livre e a colheita aumentou.
+    await sio.emit("construcao.concluida", fato("construcao.iniciada (temporizador)", por=nome))

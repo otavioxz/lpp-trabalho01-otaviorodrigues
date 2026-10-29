@@ -335,8 +335,19 @@
           avisar(d.motivo, "erro");
           jogo.recusado(d.motivo);
         });
-        // ETAPA 5: ouvir "recurso.produzido"     -> jogo.recursoProduzido(...)
-        //          e "construcao.concluida"      -> jogo.obraConcluida(...)
+        // ESCUTA recurso.produzido: o temporizador do servidor colheu frutas
+        // (e os tachos fizeram geleia). O cliente não pergunta, só reage.
+        ouvir("recurso.produzido", "atualiza frutas e potes e mostra o +N", (d) => {
+          atualizar(d);
+          jogo.recursoProduzido(d.estado);
+        });
+        // ESCUTA construcao.concluida: o temporizador da obra terminou, o colhedor
+        // ficou livre e o tacho passa a fazer geleia em todas as telas.
+        ouvir("construcao.concluida", "transforma o canteiro em tacho pronto", (d) => {
+          atualizar(d);
+          avisar("Tacho de " + d.por + " pronto! A colheita aumentou e ele já faz geleia.", "ok");
+          jogo.obraConcluida(d.estado);
+        });
         // ETAPA 6: ouvir "vila.encerrada"        -> jogo.vilaEncerrada()
       }
 
