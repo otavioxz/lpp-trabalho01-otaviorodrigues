@@ -4,106 +4,290 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Pomar e geleias — Vila em Tempo Real</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
   <style>
-    body { font-family: system-ui, sans-serif; max-width: 580px; margin: 24px auto; padding: 0 12px; }
-    .cartao, .painel { border: 1px solid #ccc; border-radius: 8px; padding: 12px; margin: 12px 0; }
-    .painel p { margin: 6px 0; }
-    button { padding: 8px 14px; margin-right: 6px; border-radius: 6px; border: 1px solid #888; cursor: pointer; }
-    input { padding: 8px; margin-bottom: 8px; width: 100%; box-sizing: border-box; }
-    .avisos { list-style: none; padding: 0; }
-    .avisos li { padding: 6px 10px; margin: 4px 0; border-radius: 6px; background: #eef; }
-    .avisos li.ok { background: #dfd; }
-    .avisos li.erro { background: #fdd; }
-    #jogo { margin: 12px 0; border-radius: 8px; overflow: hidden; line-height: 0; }
+    /* ---------- cores e medidas do pomar ---------- */
+    :root {
+      --fundo: #f8f1e5;  --cartao: #fffdf9;  --borda: #eadcc6;  --sombra: 0 2px 10px rgba(92, 56, 24, .08);
+      --texto: #3b2a1e;  --suave: #8a7360;
+      --geleia: #a3214a; --geleia-2: #c9376b; --geleia-claro: #fbe7ee;
+      --folha: #3f8f3a;  --folha-claro: #e5f3df; --mel: #e99b25; --mel-claro: #fdf0d9;
+      --erro: #c62828;   --erro-claro: #fde8e6; --noite: #2c3e66;
+      --console: #2a1e19; --console-2: #362823; --console-texto: #f4e9dd; --console-suave: #b9a593;
+      --emit: #5aa9ff;   --on: #74d06e; --recusa: #ff7a7a;
+      --raio: 14px;
+    }
+    * { box-sizing: border-box; }
+    [v-cloak] { display: none; }
+    body {
+      margin: 0; min-height: 100vh; color: var(--texto); font-family: "Nunito", system-ui, sans-serif;
+      background: var(--fundo) radial-gradient(circle at 15% 0%, #fde9d3 0, transparent 45%) no-repeat;
+    }
+    h1, h2 { margin: 0; }
+    button { font: inherit; cursor: pointer; border: 0; }
+
+    /* ---------- tela de entrada ---------- */
+    .entrada { min-height: calc(100vh - 60px); display: grid; place-items: center; padding: 24px 16px; }
+    .entrada-cartao {
+      width: 100%; max-width: 460px; background: var(--cartao); border: 1px solid var(--borda);
+      border-radius: 22px; padding: 32px 28px; box-shadow: 0 12px 40px rgba(92, 56, 24, .12); text-align: center;
+    }
+    .logo { font-size: 44px; line-height: 1; margin-bottom: 8px; }
+    .entrada h1 { font-size: 30px; font-weight: 800; color: var(--geleia); }
+    .sub { color: var(--suave); margin: 8px 0 22px; line-height: 1.45; }
+    .campo { display: block; text-align: left; font-weight: 700; font-size: 14px; margin-bottom: 18px; }
+    .campo input {
+      display: block; width: 100%; margin-top: 6px; padding: 12px 14px; font: inherit; font-weight: 600;
+      border: 2px solid var(--borda); border-radius: 12px; background: #fff; color: var(--texto); outline: none;
+    }
+    .campo input:focus { border-color: var(--geleia-2); }
+    .papeis { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .papel {
+      display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 16px 10px;
+      border-radius: 16px; border: 2px solid var(--borda); background: #fff; color: var(--texto);
+      transition: transform .15s, border-color .15s, box-shadow .15s;
+    }
+    .papel:hover { transform: translateY(-2px); box-shadow: var(--sombra); }
+    .papel.mestre:hover { border-color: var(--mel); }
+    .papel.jogador:hover { border-color: var(--folha); }
+    .papel-emoji { font-size: 28px; }
+    .papel small { color: var(--suave); font-size: 12px; }
+
+    /* ---------- tela do pomar ---------- */
+    .layout {
+      max-width: 1180px; margin: 0 auto; padding: 18px 16px 0;
+      display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 18px; align-items: start;
+    }
+    .topo { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
+    .marca { display: flex; align-items: center; gap: 10px; }
+    .marca span { font-size: 30px; }
+    .marca h1 { font-size: 26px; font-weight: 800; color: var(--geleia); }
+    .quem { display: flex; flex-wrap: wrap; gap: 8px; }
+    .pilula, .fase {
+      padding: 6px 12px; border-radius: 999px; font-size: 14px; font-weight: 600;
+      background: var(--cartao); border: 1px solid var(--borda);
+    }
+    .fase.aguardando { background: var(--mel-claro); border-color: #f3d39b; color: #8a5a10; }
+    .fase.aberta { background: var(--folha-claro); border-color: #bfe0b4; color: #276125; }
+    .fase.encerrada { background: #e3e8f4; border-color: #c4cde3; color: var(--noite); }
+
+    .coluna-jogo { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+    #jogo { border-radius: var(--raio); overflow: hidden; line-height: 0; box-shadow: var(--sombra); border: 3px solid #fff; }
     #jogo canvas { width: 100% !important; height: auto !important; image-rendering: pixelated; }
-    .eventos { border: 1px solid #ccc; border-radius: 8px; padding: 10px; margin: 12px 0; background: #fafafa; }
-    .eventos h2 { margin: 0 0 6px; font-size: 16px; }
-    .eventos .legenda { font-size: 12px; margin: 4px 0 8px; }
-    .eventos label { font-size: 12px; display: block; margin-bottom: 6px; }
-    .eventos input { width: auto; margin: 0 6px 0 0; }
-    .eventos ul { list-style: none; padding: 0; margin: 0; max-height: 280px; overflow-y: auto;
-                  font-family: ui-monospace, Consolas, monospace; font-size: 12px; }
-    .eventos li { padding: 4px 8px; margin: 4px 0; border-left: 4px solid #999; background: #fff; }
-    .eventos li.pedido { border-color: #1976d2; }
-    .eventos li.fato { border-color: #2e7d32; }
-    .eventos li.recusa { border-color: #c62828; }
-    .eventos .causa, .eventos .dados { color: #666; }
-    .eventos .reacao { color: #1b5e20; }
-    .eventos .hora { color: #888; }
-    .eventos .vazio { font-size: 12px; color: #888; }
-    .badge { display: inline-block; padding: 0 6px; border-radius: 4px; color: #fff; font-size: 11px; margin-right: 6px; }
-    .badge.emit { background: #1976d2; }
-    .badge.on { background: #2e7d32; }
-    .chip { display: inline-block; background: #eee; border-radius: 10px; padding: 1px 8px; margin: 0 4px 4px 0; font-size: 11px; }
-    footer { margin-top: 32px; font-size: 13px; color: #666; }
+
+    .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+    .stat { background: var(--cartao); border: 1px solid var(--borda); border-radius: var(--raio); padding: 12px 14px; box-shadow: var(--sombra); }
+    .stat-rotulo { font-size: 13px; color: var(--suave); font-weight: 700; }
+    .stat-valor { font-size: 26px; font-weight: 800; line-height: 1.2; }
+    .stat-extra { font-size: 12px; color: var(--suave); }
+    .medidor { height: 8px; border-radius: 99px; background: #f1e6d6; overflow: hidden; margin-top: 6px; }
+    .medidor div { height: 100%; border-radius: 99px; background: linear-gradient(90deg, var(--folha), #6cbf5f); transition: width .3s; }
+    .medidor.cheio div { background: linear-gradient(90deg, var(--erro), #ef6b5b); }
+
+    .lote {
+      display: flex; align-items: center; gap: 14px; padding: 12px 14px; border-radius: var(--raio);
+      background: linear-gradient(135deg, var(--geleia-claro), #fff4f7); border: 2px solid #f2b8cb;
+      animation: pulsar 1.2s ease-in-out infinite alternate;
+    }
+    .lote-emoji { font-size: 30px; }
+    .lote-texto { flex: 1; min-width: 0; }
+    .lote-texto strong { color: var(--geleia); }
+    .prazo { height: 6px; border-radius: 99px; background: #f6d3df; overflow: hidden; margin-top: 6px; }
+    .prazo div { height: 100%; background: var(--geleia-2); animation: escorrer linear forwards; }
+    @keyframes escorrer { from { width: 100%; } to { width: 0; } }
+    @keyframes pulsar { from { box-shadow: 0 0 0 0 rgba(201, 55, 107, 0); } to { box-shadow: 0 0 0 5px rgba(201, 55, 107, .15); } }
+
+    .acoes { display: flex; flex-wrap: wrap; gap: 10px; }
+    .botao {
+      padding: 11px 18px; border-radius: 12px; font-weight: 700; color: #fff;
+      box-shadow: 0 3px 0 rgba(0, 0, 0, .18); transition: transform .1s, filter .15s;
+    }
+    .botao:hover { filter: brightness(1.07); }
+    .botao:active { transform: translateY(2px); box-shadow: 0 1px 0 rgba(0, 0, 0, .18); }
+    .botao.verde { background: var(--folha); }
+    .botao.escuro { background: var(--noite); }
+    .botao.geleia { background: var(--geleia); }
+    .botao.mel { background: var(--mel); color: #3b2a1e; }
+
+    .avisos { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 6px; }
+    .avisos li {
+      display: flex; gap: 8px; align-items: center; padding: 9px 12px; border-radius: 10px; font-weight: 600; font-size: 14px;
+      background: var(--cartao); border: 1px solid var(--borda); animation: entrar .25s ease-out;
+    }
+    .avisos li:not(:first-child) { opacity: .75; }
+    .avisos li.ok { background: var(--folha-claro); border-color: #bfe0b4; color: #276125; }
+    .avisos li.erro { background: var(--erro-claro); border-color: #f5bdb7; color: var(--erro); }
+    @keyframes entrar { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
+
+    /* ---------- painel de eventos ---------- */
+    .eventos {
+      position: sticky; top: 14px; display: flex; flex-direction: column; max-height: calc(100vh - 28px);
+      background: var(--console); color: var(--console-texto); border-radius: var(--raio); padding: 16px;
+      box-shadow: 0 8px 30px rgba(42, 30, 25, .25);
+    }
+    .eventos h2 { font-size: 17px; font-weight: 800; }
+    .eventos .legenda { font-size: 12px; color: var(--console-suave); margin: 8px 0 10px; line-height: 1.8; }
+    .contadores { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 10px; }
+    .chip {
+      font-family: "JetBrains Mono", ui-monospace, monospace; font-size: 11px; padding: 2px 8px; border-radius: 99px;
+      background: var(--console-2); color: var(--console-texto); border: 1px solid #4a3830;
+    }
+    .chip b { color: var(--mel); }
+    .eventos label { font-size: 12px; color: var(--console-suave); display: flex; align-items: center; gap: 6px; margin-bottom: 10px; cursor: pointer; }
+    .eventos ul {
+      list-style: none; padding: 0 4px 0 0; margin: 0; overflow-y: auto; flex: 1; min-height: 160px;
+      font-family: "JetBrains Mono", ui-monospace, monospace; font-size: 12px;
+    }
+    .eventos li {
+      padding: 8px 10px; margin-bottom: 6px; border-radius: 8px; background: var(--console-2);
+      border-left: 4px solid #6b5a50; animation: entrar .25s ease-out;
+    }
+    .eventos li.pedido { border-color: var(--emit); }
+    .eventos li.fato { border-color: var(--on); }
+    .eventos li.recusa { border-color: var(--recusa); background: #3a2423; }
+    .eventos .linha { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+    .eventos .nome { font-weight: 600; }
+    .eventos .hora { margin-left: auto; color: var(--console-suave); font-size: 11px; }
+    .eventos .causa, .eventos .dados { color: var(--console-suave); margin-top: 3px; word-break: break-word; }
+    .eventos .causa b, .eventos .dados b { color: #d8c6b4; font-weight: 600; }
+    .eventos .reacao { color: var(--on); margin-top: 3px; }
+    .eventos li.recusa .reacao { color: var(--recusa); }
+    .eventos li.vazio { color: var(--console-suave); text-align: center; padding: 18px 0; background: none; border: 0; }
+    .eventos ul::-webkit-scrollbar { width: 6px; }
+    .eventos ul::-webkit-scrollbar-thumb { background: #5a4840; border-radius: 9px; }
+    .badge { display: inline-block; padding: 1px 7px; border-radius: 6px; color: #10151c; font-size: 11px; font-weight: 700; }
+    .badge.emit { background: var(--emit); }
+    .badge.on { background: var(--on); }
+
+    footer { text-align: center; font-size: 13px; color: var(--suave); padding: 22px 16px; }
+
+    /* ---------- telas menores ---------- */
+    @media (max-width: 920px) {
+      .layout { grid-template-columns: 1fr; }
+      .eventos { position: static; max-height: 520px; }
+    }
+    @media (max-width: 560px) {
+      .stats { grid-template-columns: 1fr 1fr; }
+      .papeis { grid-template-columns: 1fr; }
+      .marca h1 { font-size: 22px; }
+    }
   </style>
 </head>
 <body>
-<div id="app">
+<div id="app" v-cloak>
 
   <!-- Tela de entrada -->
-  <section v-if="!conectado" class="cartao">
-    <h1>🍎 Pomar e geleias</h1>
-    <input v-model="nome" placeholder="Seu nome">
-    <button @click="entrar('mestre')">Entrar como Mestre</button>
-    <button @click="entrar('jogador')">Entrar como Jogador</button>
+  <section v-if="!conectado" class="entrada">
+    <div class="entrada-cartao">
+      <div class="logo">🍎🫙</div>
+      <h1>Pomar e geleias</h1>
+      <p class="sub">Vila em Tempo Real: colha frutas, construa tachos e faça geleia junto com os outros jogadores.</p>
+      <label class="campo">Seu nome
+        <input v-model="nome" placeholder="Ex.: Ana" maxlength="20">
+      </label>
+      <div class="papeis">
+        <button class="papel mestre" @click="entrar('mestre')">
+          <span class="papel-emoji">👑</span><strong>Entrar como Mestre</strong><small>Abre e encerra a temporada</small>
+        </button>
+        <button class="papel jogador" @click="entrar('jogador')">
+          <span class="papel-emoji">🧺</span><strong>Entrar como Jogador</strong><small>Constrói tachos e colhe frutas</small>
+        </button>
+      </div>
+    </div>
   </section>
 
-  <!-- Tela da vila -->
-  <main v-else>
-    <h1>🍎 Pomar e geleias</h1>
-    <p>{{ papel }}: <strong>{{ nome || "Anônimo" }}</strong> · Temporada: <strong>{{ estado.fase }}</strong></p>
+  <!-- Tela do pomar -->
+  <main v-else class="layout">
+    <header class="topo">
+      <div class="marca"><span>🍎</span><h1>Pomar e geleias</h1></div>
+      <div class="quem">
+        <span class="pilula">{{ papel === "mestre" ? "👑 Mestre" : "🧺 Jogador" }} · <strong>{{ nome || "Anônimo" }}</strong></span>
+        <span class="fase" :class="estado.fase">{{ rotuloFase }}</span>
+      </div>
+    </header>
 
-    <!-- A vila desenhada pelo Phaser aparece aqui -->
-    <div id="jogo"></div>
+    <div class="coluna-jogo">
+      <!-- O pomar desenhado pelo Phaser aparece aqui -->
+      <div id="jogo"></div>
 
-    <section class="painel">
-      <p>🍎 Frutas: <strong>{{ estado.frutas }}</strong> (+{{ porMinuto }}/min)</p>
-      <p>🫙 Potes de geleia: <strong>{{ estado.potes }}</strong></p>
-      <p>🧺 Colhedores: {{ estado.colhedores }}/{{ estado.limite }}
-        <progress :value="estado.colhedores" :max="estado.limite"></progress></p>
-      <p>🍯 Tachos: {{ estado.concluidas }} prontos, {{ estado.em_obra }} em obra</p>
-      <p v-if="estado.lote_maduro">🍒 Lote maduro: <strong>{{ estado.lote_maduro }} frutas</strong>, colha em até {{ estado.prazo }} s!</p>
-    </section>
+      <section class="stats">
+        <div class="stat">
+          <div class="stat-rotulo">🍎 Frutas</div>
+          <div class="stat-valor">{{ estado.frutas }}</div>
+          <div class="stat-extra">+{{ porMinuto }}/min colhidas</div>
+        </div>
+        <div class="stat">
+          <div class="stat-rotulo">🫙 Potes de geleia</div>
+          <div class="stat-valor">{{ estado.potes }}</div>
+          <div class="stat-extra">até {{ estado.concluidas }} por colheita</div>
+        </div>
+        <div class="stat">
+          <div class="stat-rotulo">🧺 Colhedores</div>
+          <div class="stat-valor">{{ estado.colhedores }}/{{ estado.limite }}</div>
+          <div class="medidor" :class="{ cheio: estado.limite && estado.colhedores >= estado.limite }">
+            <div :style="{ width: (estado.limite ? estado.colhedores / estado.limite * 100 : 0) + '%' }"></div>
+          </div>
+        </div>
+        <div class="stat">
+          <div class="stat-rotulo">🍯 Tachos</div>
+          <div class="stat-valor">{{ estado.concluidas }}</div>
+          <div class="stat-extra">prontos · {{ estado.em_obra }} em obra</div>
+        </div>
+      </section>
 
-    <section>
-      <template v-if="papel === 'mestre'">
-        <button @click="abrirVila">Abrir temporada</button>
-        <button @click="encerrarVila">Encerrar temporada</button>
-      </template>
-      <template v-else>
-        <button @click="construir">🍯 Construir tacho (custo {{ estado.custo }} frutas)</button>
-        <button v-if="estado.lote_maduro" @click="colher">🧺 Colher lote maduro (+{{ estado.lote_maduro }})</button>
-      </template>
-    </section>
+      <!-- Lote maduro: aparece só enquanto existe (fruta.amadureceu) -->
+      <section v-if="estado.lote_maduro" class="lote">
+        <span class="lote-emoji">🍒</span>
+        <div class="lote-texto">
+          <div>Lote maduro: <strong>{{ estado.lote_maduro }} frutas</strong>. Colha em até {{ estado.prazo }} s!</div>
+          <div class="prazo"><div :style="{ animationDuration: estado.prazo + 's' }"></div></div>
+        </div>
+        <button v-if="papel === 'jogador'" class="botao geleia" @click="colher">🧺 Colher</button>
+      </section>
 
-    <ul class="avisos">
-      <li v-for="a in avisos" :class="a.tipo">{{ a.texto }}</li>
-    </ul>
+      <section class="acoes">
+        <template v-if="papel === 'mestre'">
+          <button class="botao verde" @click="abrirVila">☀️ Abrir temporada</button>
+          <button class="botao escuro" @click="encerrarVila">🌙 Encerrar temporada</button>
+        </template>
+        <button v-else class="botao mel" @click="construir">🍯 Construir tacho · {{ estado.custo }} frutas</button>
+      </section>
+
+      <ul class="avisos">
+        <li v-for="a in avisos" :key="a.id" :class="a.tipo">
+          <span>{{ a.tipo === "ok" ? "✅" : a.tipo === "erro" ? "✋" : "🔔" }}</span>{{ a.texto }}
+        </li>
+      </ul>
+    </div>
 
     <!-- PAINEL DE EVENTOS: mostra o paradigma funcionando (emit, on, causa e reação) -->
-    <section class="eventos">
+    <aside class="eventos">
       <h2>📡 Painel de eventos</h2>
       <p class="legenda">
-        <span class="badge emit">⬆ emit</span> este cliente PEDIU algo ao servidor ·
+        <span class="badge emit">⬆ emit</span> este cliente PEDIU algo ao servidor<br>
         <span class="badge on">⬇ on</span> este cliente ESCUTOU um evento e reagiu
       </p>
       <!-- Contadores por evento: quantas vezes este cliente emitiu ou escutou cada evento -->
       <div class="contadores">
-        <span v-for="(n, nome) in contadores" class="chip">{{ nome }} ×{{ n }}</span>
+        <span v-for="(n, nome) in contadores" class="chip">{{ nome }} <b>×{{ n }}</b></span>
       </div>
       <label><input type="checkbox" v-model="ocultarProducao"> ocultar recurso.produzido (é muito frequente)</label>
       <ul>
-        <li v-for="e in eventosVisiveis" :class="e.tipo">
-          <span class="badge" :class="e.sentido === 'enviado' ? 'emit' : 'on'">{{ e.sentido === 'enviado' ? '⬆ emit' : '⬇ on' }}</span>
-          <strong>{{ e.nome }}</strong> <span class="hora">{{ e.hora }}</span>
-          <div v-if="e.causa" class="causa">causa: {{ e.causa }}</div>
-          <div v-if="e.dados" class="dados">dados: {{ e.dados }}</div>
+        <li v-for="e in eventosVisiveis" :key="e.id" :class="e.tipo">
+          <div class="linha">
+            <span class="badge" :class="e.sentido === 'enviado' ? 'emit' : 'on'">{{ e.sentido === 'enviado' ? '⬆ emit' : '⬇ on' }}</span>
+            <span class="nome">{{ e.nome }}</span>
+            <span class="hora">{{ e.hora }}</span>
+          </div>
+          <div v-if="e.causa" class="causa"><b>causa:</b> {{ e.causa }}</div>
+          <div v-if="e.dados" class="dados"><b>dados:</b> {{ e.dados }}</div>
           <div v-if="e.reacao" class="reacao">↪ reação: {{ e.reacao }}</div>
         </li>
+        <li v-if="!eventosVisiveis.length" class="vazio">Nenhum evento ainda. Faça uma ação.</li>
       </ul>
-      <p v-if="!eventosVisiveis.length" class="vazio">Nenhum evento ainda. Faça uma ação.</p>
-    </section>
+    </aside>
   </main>
 
   <footer>Desenvolvido por: Otavio Rodrigues (@otavioxz)</footer>
@@ -307,11 +491,15 @@
       const jogo = criarJogo();      // a vila desenhada (Phaser)
       let socket = null;
 
+      let contador = 0;                     // identifica avisos e eventos nas listas da tela
+      const rotuloFase = computed(() => ({
+        aguardando: "⏳ Aguardando o Mestre", aberta: "☀️ Temporada aberta", encerrada: "🌙 Temporada encerrada",
+      })[estado.fase] || estado.fase);
       const porMinuto = computed(() =>
         estado.intervalo ? Math.round(estado.producao * 60 / estado.intervalo) : 0);
 
       function avisar(texto, tipo = "info") {
-        avisos.value.unshift({ texto, tipo });
+        avisos.value.unshift({ id: ++contador, texto, tipo });
         avisos.value = avisos.value.slice(0, 6);
       }
 
@@ -330,7 +518,7 @@
       function registrar(sentido, nome, dados, reacao = "") {
         const tipo = /solicitad[ao]$/.test(nome) ? "pedido" : (nome === "operacao.recusada" ? "recusa" : "fato");
         contadores[nome] = (contadores[nome] || 0) + 1;
-        eventos.value.unshift({ hora: new Date().toLocaleTimeString(), sentido: sentido, nome, tipo,
+        eventos.value.unshift({ id: ++contador, hora: new Date().toLocaleTimeString(), sentido: sentido, nome, tipo,
           causa: (dados && dados.causa) || "", dados: resumir(dados), reacao });
         eventos.value = eventos.value.slice(0, 40);
       }
@@ -447,7 +635,7 @@
         pedir("colheita.solicitada");
       }
 
-      return { nome, papel, conectado, estado, avisos, eventosVisiveis, contadores, ocultarProducao, porMinuto,
+      return { nome, papel, conectado, estado, avisos, eventosVisiveis, contadores, ocultarProducao, porMinuto, rotuloFase,
                entrar, abrirVila, construir, encerrarVila, colher };
     }
   }).mount("#app");
